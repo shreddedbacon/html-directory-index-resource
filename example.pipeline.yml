@@ -1,0 +1,36 @@
+jobs:
+- name: get-resource-files
+  plan:
+  - get: pcre-sourcecode
+    trigger: true
+  - task: get-resource-files
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source: { repository: alpine }
+      inputs:
+        - name: pcre-sourcecode
+      run:
+        path: sh
+        args:
+        - -exc
+        - |
+          ls -alR
+          tar tf pcre-sourcecode/source.tar.gz | head -n1
+
+resource_types:
+- name: http-directory-index
+  type: docker-image
+  source:
+    repository: shreddedbacon/http-directory-index
+
+resources:
+- name: pcre-sourcecode
+  type: http-directory-index
+  source:
+    url: https://ftp.pcre.org/pub/pcre/
+    file_prefix: pcre-
+    file_regex: "([0-9]+\\.)?([0-9]+)?"
+    file_extension: .tar.gz
+
