@@ -2,7 +2,7 @@ FROM alpine:latest
 
 RUN apk update
 RUN apk upgrade
-RUN apk add --no-cache bash git curl wget jq uniq sort
+RUN apk add --no-cache bash git curl wget jq uniq
 
 COPY scripts/ /opt/resource/
 RUN chmod +x /opt/resource/*

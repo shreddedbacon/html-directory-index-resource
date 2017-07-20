@@ -19,7 +19,7 @@ file_reverse=$( jq -r '.source.file_reverse // "false"' < ${payload})
 release_version=$( jq -r '.version.version // "latest"' < ${payload})
 
 # grep for matches, then remove duplicates
-versions=$(curl -s $url | grep -o -E "${file_prefix}${file_version_regex}${file_suffix}${file_extension}" | sort -V | uniq)
+versions=$(curl -s $url | grep -o -E "${file_prefix}${file_version_regex}${file_suffix}${file_extension}" | uniq)
 
 # Set up a file to store the versions for later
 new_versions_file="${payload}-new-versions"
