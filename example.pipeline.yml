@@ -18,6 +18,8 @@ jobs:
         - |
           ls -alR
           tar tf pcre-sourcecode/source.tar.gz | head -n1
+          cat pcre-sourcecode/url
+          cat pcre-sourcecode/version
 
 resource_types:
 - name: http-directory-index
