@@ -1,0 +1,46 @@
+#!/bin/bash
+
+set -e -u
+
+exec 3>&1 # make stdout available as fd 3 for the result
+exec 1>&2 # redirect all output to stderr for logging
+
+destination=$1
+if [ -z "${destination}" ]
+then
+  echo "usage: $0 </path/to/destination>" >&2
+  exit 1
+fi
+
+validate_url() {
+  if [[ $(wget -S --spider $1  2>&1 | grep 'HTTP/1.1 200 OK') ]]; then echo "true"; fi
+}
+
+tmpdir=${tmpdir:-/tmp}
+payload="$(mktemp "${tmpdir}/http-directory-index.XXXXXX")"
+cat > "${payload}" <&0
+
+# From payload
+url=$( jq -r '.source.url // ""' < ${payload})
+file_prefix=$( jq -r '.source.file_prefix // ""' < ${payload})
+file_suffix=$( jq -r '.source.file_suffix // ""' < ${payload})
+file_version_regex=$( jq -r '.source.file_regex // ""' < ${payload})
+file_extension=$( jq -r '.source.file_extension // ".tar.gz"' < ${payload})
+file_reverse=$( jq -r '.source.file_reverse // "false"' < ${payload})
+release_version=$( jq -r '.version.version // ""' < ${payload})
+# If we aren't passing in a version number to the check from fly check-resource or such, then we want the latest version always
+if [ -z "$release_version" ]; then release_version="latest"; fi
+version="$(jq -r '.version // ""' < "${payload}")"
+
+file_url=${url%/}/${file_prefix}${release_version}${file_suffix}${file_extension}
+if [ $(validate_url $file_url) ]
+then
+  mkdir -p "${destination}"
+  wget -O "${destination}/source${file_extension}" "${file_url}"
+  echo "${release_version}"|grep -o -E "$file_version_regex" > "${destination}/version"
+  echo "${file_url}" > "${destination}/url"
+fi
+
+jq -n "{
+  version: ${version}
+}" >&3

@@ -1,0 +1,82 @@
+#!/bin/bash
+
+set -e -u
+
+exec 3>&1 # make stdout available as fd 3 for the result
+exec 1>&2 # redirect all output to stderr for logging
+
+tmpdir=${tmpdir:-/tmp}
+payload="$(mktemp "${tmpdir}/http-directory-index.XXXXXX")"
+cat > "${payload}" <&0
+
+# From payload
+url=$( jq -r '.source.url // ""' < ${payload})
+file_prefix=$( jq -r '.source.file_prefix // ""' < ${payload})
+file_suffix=$( jq -r '.source.file_suffix // ""' < ${payload})
+file_version_regex=$( jq -r '.source.file_regex // ""' < ${payload})
+file_extension=$( jq -r '.source.file_extension // ".tar.gz"' < ${payload})
+file_reverse=$( jq -r '.source.file_reverse // "false"' < ${payload})
+release_version=$( jq -r '.version.version // "latest"' < ${payload})
+
+# grep for matches, then remove duplicates
+versions=$(curl -s $url | grep -o -E "${file_prefix}${file_version_regex}${file_suffix}${file_extension}" | sort -V | uniq)
+
+# Set up a file to store the versions for later
+new_versions_file="${payload}-new-versions"
+touch "${new_versions_file}"
+
+# Loop through the results of the curl
+if [ "$file_reverse" == "true" ]
+then
+  loop_data=$(echo $versions|tr ' ' '\n'|tac|tr '\n' ' ')
+else
+  loop_data=$versions
+fi
+for each in $loop_data
+do
+  # Write to the file
+  echo "${each}" >> "${new_versions_file}"
+done
+
+
+mapfile -t versions_sorted < "${new_versions_file}"
+
+# Create the empty json string
+versions_json=''
+
+# Check if we are looking for a specific version, or if we just want the latest version
+keep_it=false
+# If we want the latest, spit it out
+if [ "$release_version" == "latest" ]
+then
+  version_number=${versions_sorted[$((${#versions_sorted[@]}-1))]}
+  version_number=${version_number#$file_prefix}
+  version_number=${version_number%$file_suffix$file_extension}
+  versions_json="${versions_json},{\"version\":\"${version_number}\"}"
+# Else loop through the list and display versions from requested version onwards
+else
+  for ((i=0; i < $((${#versions_sorted[@]})); ++i))
+  do
+    version_number=${versions_sorted[i]}
+    version_number=${version_number#$file_prefix}
+    version_number=${version_number%$file_suffix$file_extension}
+    if [[ "${version_number}" == "$release_version" ]]
+    then
+      keep_it=true
+    fi
+    if [ "$keep_it" == "true" ]
+    then
+      version_number=${versions_sorted[i]}
+      version_number=${version_number#$file_prefix}
+      version_number=${version_number%$file_suffix$file_extension}
+      versions_json="${versions_json},{\"version\":\"${version_number}\"}"
+    fi
+  done
+fi
+
+# Fix up the json for the result
+versions_json="${versions_json#','}"
+versions_json="[${versions_json}]"
+
+# Spit out the result
+jq -n "${versions_json}" >&3

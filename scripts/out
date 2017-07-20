@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -e -u
+
+exec 3>&1 # make stdout available as fd 3 for the result
+exec 1>&2 # redirect all output to stderr for logging
+
+tmpdir=${tmpdir:-/tmp}
+
+destination=$1
+
+if [ -z "${destination}" ]; then
+  echo "usage: $0 <path/to/destination>" >&2
+  exit 1
+fi
+
+payload=$(mktemp "${tmpdir}/http-directory-index.XXXXXX")
+
+cat payload > "${payload}" # <&0
+
+jq -n '{
+  version: {"version":"0.0.0"}
+}' >&3
