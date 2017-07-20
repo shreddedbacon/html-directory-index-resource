@@ -20,7 +20,7 @@ resources:
     url: https://ftp.pcre.org/pub/pcre/
     file_prefix: pcre-
     file_suffix:
-    file_regex: ([0-9]+\\.)?([0-9]+)?
+    file_regex: "([0-9]+\\.)?([0-9]+)?"
     file_extension: .tar.gz
     file_reverse: false
 ```
@@ -28,7 +28,7 @@ resources:
 * `url` is the url for the page that has the resources you want to check
 * `file_prefix` is what is infront of the version numbering scheme. This should not really be left blank
 * `file_suffix` is what is after the version numbering scheme. This can be left blank
-* `file_regex` is used to match the versioning schme used by the release resource. Craft your own regex to match your numbering scheme.
+* `file_regex` is used to match the versioning schme used by the release resource. Craft your own regex to match your numbering scheme. Use escape chars and surround in quotes
 * `file_extension` the extension of the file you want as a resource. Defaults to `.tar.gz`
 * `file_reverse` if the directory index resources are not in ascending order, this will reverse the list so they are. Defaults to false
 
